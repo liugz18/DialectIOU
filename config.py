@@ -3,7 +3,7 @@ import torch
 
 # --- 模型选择 ---
 # 在这里指定要使用的模型类名 (与 models/ 文件夹下的类名对应)
-SELECTED_MODEL = "QwenAudioModel" 
+SELECTED_MODEL = "KimiAudioModel"#"QwenAudioModel" 
 # 如果未来有新模型，例如: SELECTED_MODEL = "WhisperLargeV3Model"
 
 # --- 路径配置 ---
@@ -19,6 +19,21 @@ MODEL_CONFIGS = {
         "model_path": "../Qwen2-Audio-7B-Instruct",
         "processor_path": "../Qwen2-Audio-7B-Instruct"
     },
+    "KimiAudioModel": {
+        "module_name": "models.kimi_model",
+        "model_path": "Kimi-Audio-7B-Instruct", # Kimi 模型的路径
+        "processor_path": None, # 此模型不使用单独的 processor
+        "sampling_params": {
+            "audio_temperature": 0.8,
+            "audio_top_k": 10,
+            "text_temperature": 0.0,
+            "text_top_k": 5,
+            "audio_repetition_penalty": 1.0,
+            "audio_repetition_window_size": 64,
+            "text_repetition_penalty": 1.0,
+            "text_repetition_window_size": 16,
+        }
+    }
     # "WhisperLargeV3Model": {
     #     "model_path": "openai/whisper-large-v3",
     #     "processor_path": "openai/whisper-large-v3"
