@@ -45,7 +45,7 @@ class QwenAudioModel(MultimodalModel):
 
             # 1. 构建模型的对话输入 (使用 few-shot 示例)
             conversation = [
-                {'role': 'system', 'content': '听以下音频，结合已有的转写文字，找出其中方言特有的词汇，如输入“你三不孜儿地看哈短信息”，只需输出“三不孜儿地”，不需要输出其他内容\n'},
+                {'role': 'system', 'content': 'recognize the speech, and transcribe it in Chinese\n'},
                 # {"role": "user", "content": [
                 #     # {"type": "audio", "audio_url": "./example1.wav"}, # 示例，不会真的加载
                 #     {"type": "text", "text":"你三不孜儿地看哈短信息"},
@@ -54,7 +54,7 @@ class QwenAudioModel(MultimodalModel):
                 # --- 这是我们要处理的实际数据 ---
                 {"role": "user", "content": [
                     {"type": "audio", "audio_url": audio_path},
-                    {"type": "text", "text": transcription}, 
+                    # {"type": "text", "text": transcription}, 
                 ]},
             ]
 

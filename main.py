@@ -27,9 +27,8 @@ def get_model_instance():
         # 实例化模型
         print(f"正在实例化模型: {model_name}")
         instance = ModelClass(
-            model_path=model_config["model_path"],
-            processor_path=model_config["processor_path"],
-            device=config.DEVICE
+            device=config.DEVICE,
+            **model_config
         )
         return instance
 

@@ -3,7 +3,7 @@ import torch
 
 # --- 模型选择 ---
 # 在这里指定要使用的模型类名 (与 models/ 文件夹下的类名对应)
-SELECTED_MODEL = "KimiAudioModel"#"QwenAudioModel" 
+SELECTED_MODEL = "ParaformerLlmApiModel"#"QwenAudioModel" #"KimiAudioModel"#
 # 如果未来有新模型，例如: SELECTED_MODEL = "WhisperLargeV3Model"
 
 # --- 路径配置 ---
@@ -33,6 +33,19 @@ MODEL_CONFIGS = {
             "text_repetition_penalty": 1.0,
             "text_repetition_window_size": 16,
         }
+    },
+    "ParaformerLlmApiModel": {
+        "module_name": "models.paraformer_llm_api_model",
+        "processor_path": None, # 此模型不使用单独的 processor
+        # --- Stage 1: FunASR 配置 ---
+        "model_path": "/mnt/sda/ASR/zhanghui/FunASR/inference_model/secondmodel/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-jingzhou", # 您可以换成其他 FunASR 模型，例如本地路径
+
+        # --- Stage 2: 远程 LLM API 配置 ---
+        "llm_api_url": "https://api.siliconflow.cn/v1/chat/completions",
+        "llm_model_name": "Qwen/Qwen3-32B", # 确保您的 key 支持此模型
+        
+        # LLM 的输入源: 'asr' (使用FunASR的结果) 或 'gt' (使用标准答案文本)
+        "llm_input_source": "gt", 
     }
     # "WhisperLargeV3Model": {
     #     "model_path": "openai/whisper-large-v3",
