@@ -63,9 +63,15 @@ class KimiAudioModel(MultimodalModel):
             # 1. 构建 KimiAudio 格式的 messages
             # 我们请求模型使用 () 标记，以便后续统一转换为 <>
             messages = [
-                {'role': 'user', "message_type": "text", 'content': '将听到的音频转写成文字，对于没有汉字对应的方言特有表达，转写为拟声字并用（）标出\n'},
+                {'role': 'user', "message_type": "text", 'content': """对于方言音频以及给定的转写成的文字，找出其中所有的方言特有表达词汇，并用逗号隔开，不用输出其他内容，注意有的方言表达是没有汉字对应的拟声词
+案例输入：
+你三不孜儿地看下停电短信息，是不是门子跳了
+案例输出：
+三不孜儿地，门子
+
+输入："""},
                 {"role": "user", "message_type": "audio", "content": audio_path },
-                # {"role": "user", "message_type": "text", "content": transcription},
+                {"role": "user", "message_type": "text", "content": transcription},
             ]
 
             # 2. 模型推理

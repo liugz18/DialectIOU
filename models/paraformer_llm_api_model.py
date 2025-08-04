@@ -105,7 +105,8 @@ class ParaformerLlmApiModel(MultimodalModel):
             # audio_data, sample_rate = librosa.load(audio_path, sr=16000) # funasr 通常使用 16kHz
             
             # funasr 的 generate 方法需要的是 numpy 数组
-            res = self.paraformer_model.generate(input=audio_path, batch_size_s=300)
+            res = self.paraformer_model.generate(input=audio_path, batch_size_s=300,
+                                 output_dir="./output")
             
             # 提取文本结果
             paraformer_text = res[0].get("text", "").replace(" ", "")
