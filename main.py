@@ -3,6 +3,7 @@
 import os
 import re
 import importlib
+import sys
 
 # 从配置文件导入所有配置
 import config
@@ -53,6 +54,8 @@ def run_evaluation(model, text_file_path, audio_base_path):
         print(f"错误: 文本文件 '{text_file_path}' 未找到。")
         return
 
+    used_external_evaluator = False
+
     if config.USE_WORD_COMPARISON:
         # 使用词汇级别的比对方法
         total_recall = 0
@@ -85,7 +88,31 @@ def run_evaluation(model, text_file_path, audio_base_path):
             print(f"  HYP词汇: {hyp_words}")
             print(f"  召回率: {recall:.4f}, 准确率: {precision:.4f}, F1: {f1:.4f}\n")
     else:
-        # 使用原来的 IoU 比对方法
+        # 使用外部分段评估器（若启用），否则回退到 IoU
+        evaluator = None
+        if getattr(config, 'USE_EXTERNAL_SEGMENT_EVALUATOR', False):
+            try:
+                import importlib.util
+                evaluator_file = getattr(config, 'EXTERNAL_EVALUATOR_FILE')
+                # 将外部工程根目录加入 sys.path，确保其内部引用可解析（如 import power）
+                project_root = os.path.dirname(evaluator_file)
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+
+                spec = importlib.util.spec_from_file_location(
+                    "external_evaluator", evaluator_file
+                )
+                if spec and spec.loader:
+                    external_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(external_module)
+                    EvaluatorClass = getattr(external_module, getattr(config, 'EXTERNAL_EVALUATOR_CLASS'))
+                    evaluator = EvaluatorClass()
+                    used_external_evaluator = True
+                else:
+                    print("警告: 无法加载外部评估器模块，回退到 IoU 评估。")
+            except Exception as e:
+                print(f"警告: 加载外部评估器失败，回退到 IoU 评估。错误: {e}")
+
         total_iou = 0
         processed_lines = 0
 
@@ -102,17 +129,36 @@ def run_evaluation(model, text_file_path, audio_base_path):
             
             # 调用模型的 process 方法
             hyp_text = model.process(full_audio_path, plain_transcription)
-            
-            iou = calculate_text_iou(gt_text, hyp_text)
-            total_iou += iou
-            processed_lines += 1
-            
+
             print(f"文件: {filename}")
             print(f"  GT  : {gt_text}")
             print(f"  HYP : {hyp_text}")
-            print(f"  IoU : {iou:.4f}\n")
 
-    if processed_lines > 0:
+            if evaluator is not None:
+                try:
+                    # 打印报告；外部评估器内部负责比对【】区间
+                    _ = evaluator.print_evaluation_report(gt_text, hyp_text)
+                except Exception as e:
+                    print(f"  外部评估器运行失败: {e}")
+            else:
+                # 回退到 IoU
+                iou = calculate_text_iou(gt_text, hyp_text)
+                total_iou += iou
+                print(f"  IoU : {iou:.4f}\n")
+                processed_lines += 1
+
+        # 仅在 IoU 回退路径下打印平均值
+        if evaluator is None and processed_lines > 0:
+            average_iou = total_iou / processed_lines
+            print("-" * 80)
+            print(f"处理完成！")
+            print(f"总计处理行数: {processed_lines}")
+            print(f"平均 IoU: {average_iou:.4f}")
+            print("-" * 80)
+            return
+
+    # 使用词级/IoU路径的汇总输出；外部评估器路径已在上面逐条输出，且不需要此处的汇总
+    if not used_external_evaluator and processed_lines > 0:
         if config.USE_WORD_COMPARISON:
             average_recall = total_recall / processed_lines
             average_precision = total_precision / processed_lines
@@ -125,13 +171,9 @@ def run_evaluation(model, text_file_path, audio_base_path):
             print(f"平均F1分数: {average_f1:.4f}")
             print("-" * 80)
         else:
-            average_iou = total_iou / processed_lines
-            print("-" * 80)
-            print(f"处理完成！")
-            print(f"总计处理行数: {processed_lines}")
-            print(f"平均 IoU: {average_iou:.4f}")
-            print("-" * 80)
-    else:
+            # 在使用外部评估器路径下，逐条打印评估报告，上面已输出
+            pass
+    elif not used_external_evaluator:
         print("没有可处理的有效数据行。")
 
 

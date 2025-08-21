@@ -1,5 +1,5 @@
 # your_project_folder/models/paraformer_llm_api_model.py
-
+import re
 import os
 import requests
 import json
@@ -162,8 +162,12 @@ class ParaformerLlmApiModel(MultimodalModel):
         print(f"  -> 正在调用 LLM API...")
         final_text = self._call_llm_api(text_for_llm)
 
-        # --- 后处理，统一标记格式 ---
+        # --- 后处理，提取方言词汇并用【】标记在原文本中 ---
         if final_text:
-            final_text = final_text.replace('(', '<').replace(')', '>')
+            # 1. 用正则提取出final_text中所有被"," 或"，"分隔开的词
+            from utils.text_processing import mark_words_in_text
+            
+            dialect_words = [word.strip() for word in re.split(r'[,，]', final_text) if word.strip()]
+            final_text = mark_words_in_text(text_for_llm, dialect_words)
             
         return final_text

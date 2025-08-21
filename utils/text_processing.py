@@ -1,6 +1,42 @@
 import re
 from typing import Tuple, Set, List
 
+def mark_words_in_text(transcription: str, dialect_words: List[str], left_bracket: str = "【", right_bracket: str = "】") -> str:
+    """
+    在原文本中用指定的括号标记方言词汇
+    
+    Args:
+        transcription: 原文本
+        dialect_words: 方言词汇列表
+        left_bracket: 左括号符号，默认为 "【"
+        right_bracket: 右括号符号，默认为 "】"
+    
+    Returns:
+        str: 标记后的文本
+    """
+    if not dialect_words:
+        return transcription
+    
+    intervals_to_mark = []
+    for word in set(dialect_words):
+        for match in re.finditer(re.escape(word), transcription):
+            intervals_to_mark.append((match.start(), match.end()))
+    
+    if not intervals_to_mark:
+        return transcription
+    
+    intervals_to_mark.sort()
+    new_text_parts = []
+    last_pos = 0
+    
+    for start, end in intervals_to_mark:
+        new_text_parts.append(transcription[last_pos:start])
+        new_text_parts.append(f"{left_bracket}{transcription[start:end]}{right_bracket}")
+        last_pos = end
+    
+    new_text_parts.append(transcription[last_pos:])
+    return "".join(new_text_parts)
+
 def process_line_to_ground_truth(line: str, use_word_comparison: bool = False) -> Tuple[str, str, str]:
     parts = line.strip().split('\t')
     if len(parts) != 3:
@@ -18,21 +54,7 @@ def process_line_to_ground_truth(line: str, use_word_comparison: bool = False) -
         # 原来的比对方法：返回带标记的文本
         dialect_words_cleaned = re.sub(r'[【】{}]', '', dialect_words_raw)
         dialect_words = [word for word in dialect_words_cleaned.split(',') if word]
-        intervals_to_mark = []
-        for word in set(dialect_words):
-            for match in re.finditer(re.escape(word), transcription):
-                intervals_to_mark.append((match.start(), match.end()))
-        if not intervals_to_mark:
-            return filename, transcription, ""
-        intervals_to_mark.sort()
-        new_text_parts = []
-        last_pos = 0
-        for start, end in intervals_to_mark:
-            new_text_parts.append(transcription[last_pos:start])
-            new_text_parts.append(f"<{transcription[start:end]}>")
-            last_pos = end
-        new_text_parts.append(transcription[last_pos:])
-        gt_text = "".join(new_text_parts)
+        gt_text = mark_words_in_text(transcription, dialect_words)
         return filename, gt_text, ""
 
 def _extract_char_indices(text_with_markup: str) -> Set[int]:
