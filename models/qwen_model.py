@@ -3,8 +3,10 @@
 import os
 import torch
 import librosa
+import re
 from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
 from .base_model import MultimodalModel # 从同一目录下的 base_model 导入基类
+from utils.text_processing import mark_words_in_text
 
 class QwenAudioModel(MultimodalModel):
     """Qwen2-Audio-7B-Instruct 模型的具体实现。"""
@@ -29,51 +31,67 @@ class QwenAudioModel(MultimodalModel):
 
     def process(self, audio_path: str, transcription: str) -> str:
         """
-        使用 Qwen 模型处理单个音频文件，并返回标记了方言词的文本。
-
-        Args:
-            audio_path (str): 音频文件的绝对路径。
-            transcription (str): 音频对应的纯文本转写。
-
-        Returns:
-            str: 模型生成的、用 <> 标记了方言词的文本。
+        两阶段流程：
+        1) 用 Qwen2-Audio 做 ASR 得到 asr_text；
+        2) 仅基于 asr_text 让模型输出用逗号分隔的方言特有词汇；
+        3) 在 asr_text 中使用 mark_words_in_text 标记这些词汇。
         """
-        try:
-            if not os.path.exists(audio_path):
-                print(f"错误: 音频文件未找到 at {audio_path}")
-                return f"[错误: 音频文件未找到] {transcription}"
+        # try:
+        if not os.path.exists(audio_path):
+            print(f"错误: 音频文件未找到 at {audio_path}")
+            return f"[错误: 音频文件未找到] {transcription}"
 
-            # 1. 构建模型的对话输入 (使用 few-shot 示例)
-            conversation = [
-                {'role': 'system', 'content': 'recognize the speech, and transcribe it in Chinese\n'},
-                # {"role": "user", "content": [
-                #     # {"type": "audio", "audio_url": "./example1.wav"}, # 示例，不会真的加载
-                #     {"type": "text", "text":"你三不孜儿地看哈短信息"},
-                # ]},
-                # {"role": "assistant", "content": "你（三不孜儿地）看哈短信息"},
-                # --- 这是我们要处理的实际数据 ---
-                {"role": "user", "content": [
-                    {"type": "audio", "audio_url": audio_path},
-                    # {"type": "text", "text": transcription}, 
-                ]},
-            ]
-
-            # 2. 准备输入
-            text = self.processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
-            audio_data, _ = librosa.load(audio_path, sr=self.processor.feature_extractor.sampling_rate)
-            inputs = self.processor(text=text, audios=[audio_data], return_tensors="pt", padding=True)
-            inputs = inputs.to(self.device)
-
-            # 3. 模型推理
-            generate_ids = self.model.generate(**inputs, max_length=2048)
-            generate_ids = generate_ids[:, inputs.input_ids.size(1):]
-            response = self.processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-
-            # 4. 后处理：将模型输出的 `()` 转换为 `<>`
-            response = response.replace('(', '<').replace(')', '>')
+        # --- 阶段一：ASR 转写 ---
+        asr_conversation = [
+            {"role": "user", "content": "Audio 1: <|audio_bos|><|AUDIO|><|audio_eos|>\n Transcribe the speech to texts"},
+            # {"role": "user", "content": [
+            #     {"type": "audio", "audio_url": audio_path},
+            # ]}
             
-            return response
+        ]
+        asr_text_template = self.processor.apply_chat_template(asr_conversation, add_generation_prompt=True, tokenize=False)
+        audio_data, _ = librosa.load(audio_path, sr=self.processor.feature_extractor.sampling_rate)
+        asr_inputs = self.processor(text=asr_text_template, audios=[audio_data], return_tensors="pt", padding=True)
+        asr_inputs = asr_inputs.to(self.device)
+        asr_ids = self.model.generate(**asr_inputs, max_length=2048)
+        asr_ids = asr_ids[:, asr_inputs.input_ids.size(1):]
+        asr_text = self.processor.batch_decode(asr_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+        if not asr_text:
+            asr_text = transcription or ""
+        
+        asr_text_ = asr_text.split("'")[1]
 
-        except Exception as e:
-            print(f"处理文件 {os.path.basename(audio_path)} 时发生模型推理错误: {e}")
-            return transcription # 推理失败，返回原始纯文本作为兜底
+        # --- 阶段二：提取方言特有词汇 ---
+        extract_conversation = [
+            {"role": "system", "content": [
+                {"type": "text", "text": f"""Audio 1: <|audio_bos|><|AUDIO|><|audio_eos|>\n {asr_text_} Extract all dialect-specific words from the speech, and separate them with commas. Do not include any other content. \n Example output: \n汾波, 门子\n """},
+            ]},
+            # {"role": "user", "content": [
+            #     {"type": "text", "text": """你三不孜儿地看下停电短信息，是不是门子跳了""" },
+            # ]},
+            # {"role": "assistant", "content": [
+            #     {"type": "text", "text": """三不孜儿地，门子""" + asr_text},
+            # ]},
+            # {"role": "user", "content": [
+            #     {"type": "audio", "audio_url": audio_path},
+            # ]},
+            # {"role": "user", "content": [
+            #     {"type": "text", "text": asr_text },
+            # ]},
+        ]
+        # import pdb; pdb.set_trace()
+        extract_text_template = self.processor.apply_chat_template(extract_conversation, add_generation_prompt=True, tokenize=False)
+        extract_inputs = self.processor(text=extract_text_template, audios=[audio_data], return_tensors="pt", padding=True) #
+        extract_inputs = {k: v.to(self.device) for k, v in extract_inputs.items()}
+        extract_ids = self.model.generate(**extract_inputs, max_length=1024)
+        extract_ids = extract_ids[:, extract_inputs["input_ids"].size(1):]
+        dialect_words_text = self.processor.batch_decode(extract_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+        print("Original OUTPUT: \n", asr_text, '\n', asr_text_, '\n', dialect_words_text)
+        # --- 阶段三：标记 ---
+        dialect_words = [w.strip() for w in re.split(r"[,，]", dialect_words_text or "") if w.strip()]
+        marked_text = mark_words_in_text(asr_text_, dialect_words)
+        return marked_text
+
+        # except Exception as e:
+        #     print(f"处理文件 {os.path.basename(audio_path)} 时发生模型推理错误: {e}")
+        return transcription

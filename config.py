@@ -5,7 +5,7 @@ import pprint
 import os
 
 # --- 模型选择 ---
-SELECTED_MODEL = "ParaformerLlmApiModel"
+SELECTED_MODEL = "QwenAudioModel"
 # 如果未来有新模型，例如: SELECTED_MODEL = "WhisperLargeV3Model"
 
 # --- 路径配置 ---
