@@ -52,10 +52,10 @@ def process_line_to_ground_truth(line: str, use_word_comparison: bool = False) -
         return filename, transcription, dialect_words_cleaned
     else:
         # 原来的比对方法：返回带标记的文本
-        dialect_words_cleaned = re.sub(r'[【】{}]', '', dialect_words_raw)
-        dialect_words = [word for word in dialect_words_cleaned.split(',') if word]
-        gt_text = mark_words_in_text(transcription, dialect_words)
-        return filename, gt_text, ""
+        # dialect_words_cleaned = re.sub(r'[【】{}]', '', dialect_words_raw)
+        # dialect_words = [word for word in dialect_words_cleaned.split(',') if word]
+        # gt_text = mark_words_in_text(transcription, dialect_words)
+        return filename, transcription, dialect_words_raw
 
 def _extract_char_indices(text_with_markup: str) -> Set[int]:
     indices = set()

@@ -9,7 +9,7 @@ import sys
 import config
 
 # 从工具模块导入函数
-from utils.text_processing import process_line_to_ground_truth, calculate_text_iou, calculate_word_metrics
+from my_utils.text_processing import process_line_to_ground_truth, calculate_text_iou, calculate_word_metrics
 
 def get_model_instance():
     """动态导入并实例化所选的模型。"""
@@ -125,6 +125,9 @@ def run_evaluation(model, text_file_path, audio_base_path):
                 continue
             
             full_audio_path = os.path.join(audio_base_path, filename)
+            if not os.path.exists(full_audio_path):
+                print(f"错误: 音频文件未找到 at {full_audio_path}")
+                continue
             plain_transcription = re.sub(r'[<>]', '', gt_text)
             
             # 调用模型的 process 方法

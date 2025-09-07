@@ -59,7 +59,11 @@ class QwenAudioModel(MultimodalModel):
         if not asr_text:
             asr_text = transcription or ""
         
-        asr_text_ = asr_text.split("'")[1]
+        try:
+            asr_text_ = asr_text.split("'")[1]
+        except:
+            asr_text_ = asr_text
+            print(f"警告: 处理文本时未找到单引号，使用完整文本: {asr_text_}")
 
         # --- 阶段二：提取方言特有词汇 ---
         extract_conversation = [
@@ -86,7 +90,7 @@ class QwenAudioModel(MultimodalModel):
         extract_ids = self.model.generate(**extract_inputs, max_length=1024)
         extract_ids = extract_ids[:, extract_inputs["input_ids"].size(1):]
         dialect_words_text = self.processor.batch_decode(extract_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
-        print("Original OUTPUT: \n", asr_text, '\n', asr_text_, '\n', dialect_words_text)
+        print("\n\n\n\nOriginal OUTPUT: \n", asr_text, '\n', asr_text_, '\n', dialect_words_text)
         # --- 阶段三：标记 ---
         dialect_words = [w.strip() for w in re.split(r"[,，]", dialect_words_text or "") if w.strip()]
         marked_text = mark_words_in_text(asr_text_, dialect_words)

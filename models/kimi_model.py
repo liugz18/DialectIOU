@@ -3,7 +3,10 @@ import sys
 import re
 from .base_model import MultimodalModel
 from utils.text_processing import mark_words_in_text
-kimi_root_path = "/mnt/sda/20250403来自HDD的备份/YuYinDuoMoTai/Kimi-Audio"
+import config
+
+# Get kimi_root_path from config
+kimi_root_path = config.MODEL_CONFIGS["KimiAudioModel"]["kimi_root_path"]
 sys.path.append(kimi_root_path)
 from kimia_infer.api.kimia import KimiAudio
 

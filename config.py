@@ -5,7 +5,7 @@ import pprint
 import os
 
 # --- 模型选择 ---
-SELECTED_MODEL = "QwenAudioModel"
+SELECTED_MODEL = "StepAudioModel"
 # 如果未来有新模型，例如: SELECTED_MODEL = "WhisperLargeV3Model"
 
 # --- 路径配置 ---
@@ -23,6 +23,7 @@ MODEL_CONFIGS = {
         "module_name": "models.kimi_model",
         "model_path": "Kimi-Audio-7B-Instruct",
         "processor_path": None,
+        "kimi_root_path": "/mnt/sda/20250403来自HDD的备份/YuYinDuoMoTai/Kimi-Audio",
         "sampling_params": {
             "audio_temperature": 0.8,
             "audio_top_k": 10,
@@ -41,6 +42,15 @@ MODEL_CONFIGS = {
         "llm_api_url": "https://api.siliconflow.cn/v1/chat/completions",
         "llm_model_name": "THUDM/GLM-4.1V-9B-Thinking",
         "llm_input_source": "paraformer"
+    },
+    "StepAudioModel": {
+        "module_name": "models.step_model",
+        "model_path": "Step-Audio-2-mini",
+        "processor_path": None,
+        "stepaudio_root_path": "../Step-Audio2",
+        "max_new_tokens": 1024,
+        "temperature": 0.1,
+        "do_sample": True
     }
 }
 
