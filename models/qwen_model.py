@@ -6,7 +6,7 @@ import librosa
 import re
 from transformers import AutoProcessor, Qwen2AudioForConditionalGeneration
 from .base_model import MultimodalModel # 从同一目录下的 base_model 导入基类
-from utils.text_processing import mark_words_in_text
+from my_utils.text_processing import mark_words_in_text
 
 class QwenAudioModel(MultimodalModel):
     """Qwen2-Audio-7B-Instruct 模型的具体实现。"""
@@ -99,3 +99,58 @@ class QwenAudioModel(MultimodalModel):
         # except Exception as e:
         #     print(f"处理文件 {os.path.basename(audio_path)} 时发生模型推理错误: {e}")
         return transcription
+
+    def answer(self, audio_path: str, question: str, options: list, dialect_explanations: str = None) -> str:
+        """
+        回答问题流程：
+        1) 将问题、选项和上下文结合，让模型生成答案。
+        """
+        if not os.path.exists(audio_path):
+            print(f"错误: 音频文件未找到 at {audio_path}")
+            return "E"  # 返回错误标记
+
+        # 构建选项文本
+        options_text = "\n".join([option for option in options])
+        
+        # 构建提示词
+        prompt = f"""请根据提供的音频和文本回答问题。
+
+问题: {question}
+选项:
+{options_text}
+"""
+        # 如果 dialect_explanations 不为空，则加入到 prompt 中
+        if dialect_explanations:
+            prompt += f"\n方言解释: {dialect_explanations}\n"
+
+        prompt += "请只输出答案的字母（例如：A），不要输出其他内容。"
+
+        # 加载音频
+        audio_data, _ = librosa.load(audio_path, sr=self.processor.feature_extractor.sampling_rate)
+        
+        # 构建对话
+        conversation = [
+            {"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "audio", "audio_url": audio_path},
+            ]}
+        ]
+        
+        # 生成答案
+        text_template = self.processor.apply_chat_template(conversation, add_generation_prompt=True, tokenize=False)
+        inputs = self.processor(text=text_template, audios=[audio_data], return_tensors="pt", padding=True)
+        inputs = inputs.to(self.device)
+        generated_ids = self.model.generate(**inputs, max_length=1024)
+        generated_ids = generated_ids[:, inputs.input_ids.size(1):]
+        answer_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+        
+        # 从回答中提取答案字母
+        if answer_text:
+            print("Qwen 模型回答原文:", answer_text)
+            # 查找第一个大写字母
+            match = re.search(r'[A-D]', answer_text)
+            if match:
+                return match.group()
+        
+        # 如果没有找到有效答案，返回错误标记
+        return "E"

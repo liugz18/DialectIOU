@@ -280,11 +280,11 @@ def run_evaluation_with_checkpoint(model, text_file_path, audio_base_path, log_f
             print(f"  HYP : {hyp_text}")
 
             if evaluator is not None:
-                try:
+                # try:
                     # 打印报告；外部评估器内部负责比对【】区间
-                    _ = evaluator.print_evaluation_report(gt_text, hyp_text)
-                except Exception as e:
-                    print(f"  外部评估器运行失败: {e}")
+                _ = evaluator.print_evaluation_report(gt_text, hyp_text)
+                # except Exception as e:
+                #     print(f"  外部评估器运行失败: {e}")
             
             processed_lines += 1
 

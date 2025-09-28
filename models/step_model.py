@@ -113,3 +113,53 @@ class StepAudioModel(MultimodalModel):
         dialect_words = [w.strip() for w in re.split(r"[,，]", dialect_words_text or "") if w.strip()]
         marked_text = mark_words_in_text(asr_text_, dialect_words)
         return marked_text
+
+    def answer(self, audio_path: str, question: str, options: list, dialect_explanations: str = None) -> str:
+        """
+        回答问题流程：
+        1) 将问题、选项和上下文结合，让模型生成答案。
+        """
+        if not os.path.exists(audio_path):
+            print(f"错误: 音频文件未找到 at {audio_path}")
+            return "E"  # 返回错误标记
+
+        # 构建选项文本
+        options_text = "\n".join([option for option in options])
+        
+        # 构建提示词
+        prompt = f"""请根据提供的音频和文本回答问题。
+
+问题: {question}
+选项:
+{options_text}
+"""
+        # 如果 dialect_explanations 不为空，则加入到 prompt 中
+        if dialect_explanations:
+            prompt += f"\n方言解释: {dialect_explanations}\n"
+
+        prompt += "请只输出答案的字母（例如：A），不要输出其他内容。"
+
+        # 构建消息
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "human", "content": [{"type": "audio", "audio": audio_path}]},
+            {"role": "assistant", "content": None}
+        ]
+        
+        # 生成答案
+        tokens, answer_text, _ = self.model(
+            messages, 
+            max_new_tokens=self.max_new_tokens,
+            temperature=self.temperature,
+            do_sample=self.do_sample
+        )
+        
+        # 从回答中提取答案字母
+        if answer_text:
+            # 查找第一个大写字母
+            match = re.search(r'[A-D]', answer_text)
+            if match:
+                return match.group()
+        
+        # 如果没有找到有效答案，返回错误标记
+        return "E"

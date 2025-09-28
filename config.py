@@ -5,11 +5,11 @@ import pprint
 import os
 
 # --- 模型选择 ---
-SELECTED_MODEL = "StepAudioModel"
+SELECTED_MODEL = "ParaformerLlmApiModel"
 # 如果未来有新模型，例如: SELECTED_MODEL = "WhisperLargeV3Model"
 
 # --- 路径配置 ---
-AUDIO_BASE_PATH = "/mnt/sda/20250403来自HDD的备份/YuYinDuoMoTai/XiNanData"#"/mnt/sda/ASR/DataSets/LabelData/20250606fangyanciku_tiqu/filtered_audio_huangzhou/huangzhou"
+AUDIO_BASE_PATH = "/mnt/sda/20250403来自HDD的备份/YuYinDuoMoTai/ShangHaiData"#"/mnt/sda/ASR/DataSets/LabelData/20250606fangyanciku_tiqu/filtered_audio_huangzhou/huangzhou"
 TEXT_FILE_PATH = "text.txt"#'fangyan_text.txt'
 
 # --- 不同模型的具体配置 ---
@@ -40,7 +40,7 @@ MODEL_CONFIGS = {
         "processor_path": None,
         "model_path": "/mnt/sda/ASR/model/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",#"/mnt/sda/ASR/zhanghui/FunASR/inference_model/secondmodel/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-jingzhou",
         "llm_api_url": "https://api.siliconflow.cn/v1/chat/completions",
-        "llm_model_name": "THUDM/GLM-4.1V-9B-Thinking",
+        "llm_model_name": "Qwen/Qwen2.5-7B-Instruct",
         "llm_input_source": "paraformer"
     },
     "StepAudioModel": {
@@ -57,6 +57,9 @@ MODEL_CONFIGS = {
 # --- 评估方法配置 ---
 USE_WORD_COMPARISON = False
 
+# 方言测验题库路径（JSON 文件）
+QUIZZES_PATH = "../TTSDataGen/ShangHaiDialectQuizzes0912.json"
+
 # 外部分段评估器配置（用于带括号文本的匹配评估）
 # 若启用，则在非词级别评估分支中调用指定脚本里的评估类
 USE_EXTERNAL_SEGMENT_EVALUATOR = True
@@ -65,6 +68,9 @@ EXTERNAL_EVALUATOR_CLASS = "ChineseSegmentEvaluator"
 
 # --- 通用硬件配置 ---
 DEVICE = "cuda:1" if torch.cuda.is_available() else "cpu"
+
+# 是否在调用模型时传递 dialect_explanations 参数
+USE_DIALECT_EXPLANATIONS = False
 
 def print_config():
     """打印当前所有配置项，美化输出"""

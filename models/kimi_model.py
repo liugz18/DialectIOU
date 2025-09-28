@@ -2,7 +2,7 @@ import os
 import sys
 import re
 from .base_model import MultimodalModel
-from utils.text_processing import mark_words_in_text
+from my_utils.text_processing import mark_words_in_text
 import config
 
 # Get kimi_root_path from config
@@ -102,3 +102,51 @@ class KimiAudioModel(MultimodalModel):
         # except Exception as e:
         #     print(f"处理文件 {os.path.basename(audio_path)} 时发生 Kimi-Audio 模型推理错误: {e}")
         #     return transcription
+
+    def answer(self, audio_path: str, question: str, options: list, dialect_explanations: str = None) -> str:
+        """
+        回答问题流程：
+        1) 先用 Kimi-Audio 做 ASR，得到识别文本 asr_text；
+        2) 将问题、选项和上下文结合，让模型生成答案。
+        """
+        if not os.path.exists(audio_path):
+            print(f"错误: 音频文件未找到 at {audio_path}")
+            return "E"  # 返回错误标记
+
+        # 构建选项文本
+        options_text = "\n".join([option for option in options])
+        
+        # 构建提示词
+        prompt = f"""请根据提供的音频和文本回答问题。
+
+问题: {question}
+选项:
+{options_text}
+"""
+        # 如果 dialect_explanations 不为空，则加入到 prompt 中
+        if dialect_explanations:
+            prompt += f"\n方言解释: {dialect_explanations}\n"
+
+        prompt += "请只输出答案的字母（例如：A），不要输出其他内容。"
+
+        # 调用模型生成答案
+        messages = [
+            {"role": "user", "message_type": "text", "content": prompt},
+            {"role": "user", "message_type": "audio", "content": audio_path},
+        ]
+        
+        _wav, answer_text = self.model.generate(
+            messages,
+            **self.sampling_params,
+            output_type="text"
+        )
+        
+        # 从回答中提取答案字母
+        if answer_text:
+            # 查找第一个大写字母
+            match = re.search(r'[A-D]', answer_text)
+            if match:
+                return match.group()
+        
+        # 如果没有找到有效答案，返回错误标记
+        return "E"

@@ -138,11 +138,11 @@ def run_evaluation(model, text_file_path, audio_base_path):
             print(f"  HYP : {hyp_text}")
 
             if evaluator is not None:
-                try:
+                # try:
                     # 打印报告；外部评估器内部负责比对【】区间
-                    _ = evaluator.print_evaluation_report(gt_text, hyp_text)
-                except Exception as e:
-                    print(f"  外部评估器运行失败: {e}")
+                _ = evaluator.print_evaluation_report(gt_text, hyp_text)
+                # except Exception as e:
+                #     print(f"  外部评估器运行失败: {e}")
             else:
                 # 回退到 IoU
                 iou = calculate_text_iou(gt_text, hyp_text)

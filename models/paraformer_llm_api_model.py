@@ -165,9 +165,55 @@ class ParaformerLlmApiModel(MultimodalModel):
         # --- 后处理，提取方言词汇并用【】标记在原文本中 ---
         if final_text:
             # 1. 用正则提取出final_text中所有被"," 或"，"分隔开的词
-            from utils.text_processing import mark_words_in_text
+            from my_utils.text_processing import mark_words_in_text
             
             dialect_words = [word.strip() for word in re.split(r'[,，]', final_text) if word.strip()]
             final_text = mark_words_in_text(text_for_llm, dialect_words)
             
         return final_text
+
+    def answer(self, audio_path: str, question: str, options: list, dialect_explanations: str = None) -> str:
+        """
+        回答问题流程：
+        1) 使用Paraformer进行ASR，得到识别文本asr_text；
+        2) 将问题、选项和ASR文本结合，调用LLM API生成答案。
+        """
+        if not os.path.exists(audio_path):
+            print(f"错误: 音频文件未找到 at {audio_path}")
+            return "E"  # 返回错误标记
+
+        # 构建选项文本
+        options_text = "\n".join([option for option in options])
+        
+        # 第一步：使用Paraformer进行ASR
+        print(f"  -> 正在运行 funasr ASR...")
+        asr_text = self._run_paraformer(audio_path)
+        print(f"  -> ASR 结果: {asr_text}")
+        
+        # 第二步：构建提示词，调用LLM API
+        prompt = f"""请根据音频转写文本和问题，选择正确的答案。
+
+音频转写文本: {asr_text}
+问题: {question}
+选项:
+{options_text}
+"""
+        # 如果 dialect_explanations 不为空，则加入到 prompt 中
+        if dialect_explanations:
+            prompt += f"\n方言解释: {dialect_explanations}\n"
+
+        prompt += "请只输出答案的字母（例如：A），不要输出其他内容。"
+        
+        # 调用LLM API
+        print(f"  -> 正在调用 LLM API 回答问题...")
+        answer_text = self._call_llm_api(prompt)
+        
+        # 从回答中提取答案字母
+        if answer_text:
+            # 查找第一个大写字母
+            match = re.search(r'[A-D]', answer_text)
+            if match:
+                return match.group()
+        
+        # 如果没有找到有效答案，返回错误标记
+        return "E"
