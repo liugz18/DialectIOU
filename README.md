@@ -19,7 +19,7 @@ The dataset released with this toolkit contains audio clips paired with transcri
 - DE spans (Dialectal Expressions) within transcripts (marked within 【】)
 - UDS tags for syllables lacking standard, authoritative Chinese character representation (marked within <>)
 
-See the `data/` directory (if present) for data files and format. If the data is hosted separately, please place it under `data/` and update paths in `config.py` accordingly.
+See [here](https://huggingface.co/datasets/liugztat/Southwestern_Mandarin_Dialectal_Expressions_Speech).
 
 
 Quick Start
@@ -28,13 +28,13 @@ Quick Start
 
 2. Configure `config.py` to point to your local model and data paths. Key fields:
 - `SELECTED_MODEL`: choose from classes within `models/`, e.g. `ParaformerLlmApiModel`
-- `AUDIO_BASE_PATH`: base folder for audio dataset.
+- `AUDIO_BASE_PATH`: base folder for audio dataset, pull from huggingface.
 - `TEXT_FILE_PATH`: path to text annotations, relative to `AUDIO_BASE_PATH`.
 - `MODEL_CONFIGS`: model-specific settings.
 - `USE_WORD_COMPARISON`: default False, do not change.
 - `QUIZZES_PATH`: path to DMCQ quiz json.
 - `USE_EXTERNAL_SEGMENT_EVALUATOR`: default True to use SDCER metric, do not change.
-- `EXTERNAL_EVALUATOR_FILE`: path to SDCER evaluator, need to clone repo from [here](https://github.com/liugz18/power-asr/tree/Chinese)
+- `EXTERNAL_EVALUATOR_FILE`: path to SDCER evaluator, need to clone repo from [here](https://github.com/liugz18/power-asr/tree/Chinese).
 - `EXTERNAL_EVALUATOR_CLASS`: default `ChineseSegmentEvaluator`, do not change.
 - `USE_DIALECT_EXPLANATIONS`: whether to use DE paraphrases in DMCQ task.
 
